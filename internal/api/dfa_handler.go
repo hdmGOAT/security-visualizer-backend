@@ -98,3 +98,53 @@ func (h *DFAHandler) HandleGetDerivation(w http.ResponseWriter, r *http.Request)
 		"steps": steps,
 	})
 }
+
+func (h *DFAHandler) HandleProcessRequest(w http.ResponseWriter, r *http.Request) {
+	type RequestPayload struct {
+		SessionID string          `json:"session_id"`
+		HostID    string          `json:"host_id"`
+		Packets   []models.Packet `json:"packets"`
+		Threshold int             `json:"threshold"`
+	}
+
+	var req RequestPayload
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	session := h.sessionManager.GetSession(req.SessionID)
+	if session == nil {
+		http.Error(w, "Session not found", http.StatusNotFound)
+		return
+	}
+
+	if len(req.Packets) == 0 {
+		http.Error(w, "No packets provided", http.StatusBadRequest)
+		return
+	}
+
+	// Process the request via the runner (PDA history built from the provided packets only)
+	// Default threshold to 1 if not provided
+	threshold := req.Threshold
+	if threshold <= 0 {
+		threshold = 1
+	}
+
+	resp, err := h.runner.RunRequest(req.HostID, req.Packets, threshold)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Update session: add each packet and update current state to last packet final state
+	for i, p := range req.Packets {
+		session.AddPacket(p)
+		if i < len(resp.Packets) {
+			session.UpdateState(resp.Packets[i].FinalState)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}

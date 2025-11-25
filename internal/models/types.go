@@ -29,6 +29,8 @@ type StackOperation struct {
 	Action    string   `json:"action"`     // "PUSH", "POP", "NO_OP"
 	Symbol    string   `json:"symbol"`     // The symbol pushed/popped (e.g., "S0")
 	Stack     []string `json:"stack"`      // Snapshot of stack after op: ["S0", "S1"]
+	CurrentState string `json:"current_state"` // Control state before the op
+	NextState    string `json:"next_state"`    // Control state after the op
 }
 
 // PDAValidationResponse represents the result of a PDA validation
@@ -38,6 +40,12 @@ type PDAValidationResponse struct {
 	Trace   []StackOperation `json:"trace"`
 }
 
+// RequestProcessingResponse bundles PDA validation with per-packet DFA results
+type RequestProcessingResponse struct {
+	PDA     PDAValidationResponse  `json:"pda"`
+	Packets []DFAPacketResponse   `json:"packets"`
+	IsMalicious bool              `json:"is_malicious"`
+}
 // SessionInitResponse represents the response when starting a session
 type SessionInitResponse struct {
 	SessionID string `json:"session_id"`

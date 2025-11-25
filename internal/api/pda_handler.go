@@ -72,3 +72,15 @@ func (h *PDAHandler) HandleValidate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
+
+// HandleGetGraph returns the PDA graph (DOT -> JSON) for visualization
+func (h *PDAHandler) HandleGetGraph(w http.ResponseWriter, r *http.Request) {
+	graph, err := h.runner.GetPDAGraph()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(graph)
+}

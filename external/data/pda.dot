@@ -1,0 +1,78 @@
+digraph PDA {
+  rankdir=LR;
+  node [shape=circle];
+
+  /* start point */
+  __start [shape=point];
+  __start -> Start [label="ε, ε -> Z0"];
+
+  Start [label="Start"];
+  Accept [label="Accept", shape=doublecircle];
+
+  /* ---------------- Protocol branching ---------------- */
+  Start -> TCP_Init  [label="proto=tcp, ε -> ε"];
+  Start -> UDP_Init  [label="proto=udp, ε -> ε"];
+  Start -> ICMP_Init [label="proto=icmp, ε -> ε"];
+
+  /* ---------------- TCP ---------------- */
+  TCP_Init [label="TCP_Init"];
+  TCP_Handshake [label="TCP_Handshake"];
+
+  /* TCP: service selection - neutral stack */
+  TCP_Init -> TCP_Handshake [label="service=http, ε -> ε"];
+  TCP_Init -> TCP_Handshake [label="service=ssh, ε -> ε"];
+  TCP_Init -> TCP_Handshake [label="service=dns, ε -> ε"];
+  TCP_Init -> TCP_Handshake [label="service=-, ε -> ε"];
+
+  /* TCP: handshake stack ops */
+  TCP_Handshake -> TCP_Handshake [label="state=S0, ε -> T"];  /* push T */
+  TCP_Handshake -> TCP_Handshake [label="state=SF, T -> ε"];  /* pop T */
+
+    /* Allow new packet headers to start while in handshake (accept proto/service of next packet)
+      so the PDA can process sequences like: proto,service,S0  proto,service,S1 ... */
+    TCP_Handshake -> TCP_Init [label="proto=tcp, ε -> ε"];
+    TCP_Handshake -> UDP_Init [label="proto=udp, ε -> ε"];
+    TCP_Handshake -> ICMP_Init [label="proto=icmp, ε -> ε"];
+
+    /* Allow service tokens to be seen between handshake frames without changing stack */
+    TCP_Handshake -> TCP_Handshake [label="service=http, ε -> ε"];
+    TCP_Handshake -> TCP_Handshake [label="service=ssh, ε -> ε"];
+    TCP_Handshake -> TCP_Handshake [label="service=dns, ε -> ε"];
+    TCP_Handshake -> TCP_Handshake [label="service=-, ε -> ε"];
+
+  /* TCP: neutral transitions */
+  TCP_Handshake -> TCP_Handshake [label="state=S1, ε -> ε"];
+  TCP_Handshake -> TCP_Handshake [label="state=S2, ε -> ε"];
+  TCP_Handshake -> TCP_Handshake [label="state=RSTO, ε -> ε"];
+  TCP_Handshake -> TCP_Handshake [label="state=RSTR, ε -> ε"];
+
+  /* Allow unexpected proto/service tokens to be handled gracefully in TCP_Init as well */
+  TCP_Init -> TCP_Init [label="proto=tcp, ε -> ε"];
+  TCP_Init -> TCP_Init [label="service=http, ε -> ε"];
+  TCP_Init -> TCP_Init [label="service=ssh, ε -> ε"];
+  TCP_Init -> TCP_Init [label="service=dns, ε -> ε"];
+
+  /* TCP: accept only when stack back to Z0 */
+  TCP_Handshake -> Accept [label="END, Z0 -> Z0"];
+
+  /* ---------------- UDP ---------------- */
+  UDP_Init [label="UDP_Init"];
+
+  UDP_Init -> UDP_Init [label="service=dns, ε -> ε"];
+  UDP_Init -> UDP_Init [label="service=dhcp, ε -> ε"];
+  UDP_Init -> UDP_Init [label="service=ntp, ε -> ε"];
+  UDP_Init -> UDP_Init [label="service=-, ε -> ε"];
+  UDP_Init -> UDP_Init [label="state=S0, ε -> ε"];
+  UDP_Init -> UDP_Init [label="state=SF, ε -> ε"];
+
+  UDP_Init -> Accept [label="END, ε -> ε"];
+
+  /* ---------------- ICMP ---------------- */
+  ICMP_Init [label="ICMP_Init"];
+
+  ICMP_Init -> ICMP_Init [label="service=-, ε -> ε"];
+  ICMP_Init -> ICMP_Init [label="state=OTH, ε -> ε"];
+  ICMP_Init -> ICMP_Init [label="state=SF, ε -> ε"];
+
+  ICMP_Init -> Accept [label="END, ε -> ε"];
+}
