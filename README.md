@@ -24,6 +24,11 @@ go run ./cmd/server
 
 By default the server listens on port `8080` and exposes the API under `/api`.
 
+Windows notes
+
+- The backend will prefer a Windows-built CLI named `api.exe` when present and will fall back to the non-.exe binary if the `.exe` is not found (this supports running under WSL or when only the Linux binary is available). Place the simulator binary under `../security-dfa-gen/bin/` (or `external/bin/` depending on your setup) so the backend can locate it.
+- If you want native Windows support it is easiest to build the C++ simulator on Windows (MSYS2 / Visual Studio toolchain) and ensure the output binary is named `api.exe` in the expected location. Alternatively use WSL and build the existing Makefile there.
+
 Important API endpoints
 
 - `POST /api/session` — start a new interactive session. Returns `{ session_id }`.
