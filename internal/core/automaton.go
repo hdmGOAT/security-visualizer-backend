@@ -58,7 +58,7 @@ func (a *Automaton) LoadFromDOT(path string) error {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	
+
 	// Regex patterns
 	nodePattern := regexp.MustCompile(`^\s*(\w+)\s*\[label="([^"]+)"(.*)\];`)
 	edgePattern := regexp.MustCompile(`^\s*(\w+)\s*->\s*(\w+)\s*\[label="([^"]+)"\];`)
@@ -74,7 +74,7 @@ func (a *Automaton) LoadFromDOT(path string) error {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		if matches := startPattern.FindStringSubmatch(line); len(matches) > 1 {
 			a.StartNode = matches[1]
 			continue
@@ -88,7 +88,7 @@ func (a *Automaton) LoadFromDOT(path string) error {
 			label := matches[2]
 			attrs := matches[3]
 			isAccepting := strings.Contains(attrs, "doublecircle")
-			
+
 			a.Nodes[id] = &Node{
 				ID:          id,
 				Label:       strings.Split(label, "\\n")[0], // Clean label
@@ -245,14 +245,14 @@ func (a *Automaton) GetDerivation(history []models.Packet) ([]string, error) {
 	// This is a simplified derivation reconstruction.
 	// We assume the grammar is regular and deterministic enough for the trace.
 	// We start at S.
-	
+
 	if a.Grammar == nil {
 		return nil, fmt.Errorf("grammar not loaded")
 	}
 
 	derivation := []string{"S"}
 	currentNonTerminal := "S"
-	
+
 	// Flatten history into symbols
 	var symbols []string
 	for _, p := range history {
@@ -267,12 +267,12 @@ func (a *Automaton) GetDerivation(history []models.Packet) ([]string, error) {
 		// Find production from currentNonTerminal that matches sym
 		// Production looks like: A -> Tn B  or A -> terminal
 		// We need to find the one where Tn matches sym or terminal matches sym
-		
+
 		found := false
 		for _, prod := range a.Grammar.Productions[currentNonTerminal] {
 			// Check if first token matches symbol
 			firstToken := prod.RHS[0]
-			
+
 			match := false
 			if strings.HasPrefix(firstToken, "T") {
 				if val, ok := a.Grammar.Terminals[firstToken]; ok && val == sym {
@@ -286,11 +286,11 @@ func (a *Automaton) GetDerivation(history []models.Packet) ([]string, error) {
 				// Found the production
 				// Update derivation string
 				// Replace currentNonTerminal with RHS
-				
+
 				// Construct the new string part
 				rhsStr := ""
 				nextNonTerminal := ""
-				
+
 				for _, token := range prod.RHS {
 					if strings.HasPrefix(token, "T") {
 						rhsStr += a.Grammar.Terminals[token] + " "
@@ -305,26 +305,26 @@ func (a *Automaton) GetDerivation(history []models.Packet) ([]string, error) {
 						rhsStr += token + " "
 					}
 				}
-				
+
 				// Update the full derivation string
 				// The current string is "processed_symbols currentNonTerminal"
 				// We want "processed_symbols rhsStr"
-				
+
 				step := strings.TrimSpace(currentString + " " + rhsStr)
 				derivation = append(derivation, step)
-				
+
 				currentString += " " + sym
 				currentNonTerminal = nextNonTerminal
 				found = true
 				break
 			}
 		}
-		
+
 		if !found {
 			// If we can't derive, stop
 			break
 		}
-		
+
 		if currentNonTerminal == "" {
 			// Reached a terminal production (end of derivation?)
 			break

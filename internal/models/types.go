@@ -5,7 +5,6 @@ type Packet struct {
 	Proto     string `json:"proto"`      // e.g., "tcp"
 	Service   string `json:"service"`    // e.g., "http"
 	ConnState string `json:"conn_state"` // e.g., "S0", "SF"
-	HostID    string `json:"host_id"`    // e.g., "192.168.1.5"
 }
 
 // DFAStep represents a single transition in the DFA
@@ -25,31 +24,27 @@ type DFAPacketResponse struct {
 
 // StackOperation represents a single operation on the PDA stack
 type StackOperation struct {
-	StepIndex int      `json:"step_index"`
-	Action    string   `json:"action"`     // "PUSH", "POP", "NO_OP"
-	Symbol    string   `json:"symbol"`     // The symbol pushed/popped (e.g., "S0")
-	Stack     []string `json:"stack"`      // Snapshot of stack after op: ["S0", "S1"]
-	CurrentState string `json:"current_state"` // Control state before the op
-	NextState    string `json:"next_state"`    // Control state after the op
+	StepIndex    int      `json:"step_index"`
+	Action       string   `json:"action"`        // "PUSH", "POP", "NO_OP"
+	Symbol       string   `json:"symbol"`        // The symbol pushed/popped (e.g., "S0")
+	Stack        []string `json:"stack"`         // Snapshot of stack after op: ["S0", "S1"]
+	CurrentState string   `json:"current_state"` // Control state before the op
+	NextState    string   `json:"next_state"`    // Control state after the op
 }
 
 // PDAValidationResponse represents the result of a PDA validation
 type PDAValidationResponse struct {
-	HostID  string           `json:"host_id"`
 	IsValid bool             `json:"is_valid"`
 	Trace   []StackOperation `json:"trace"`
 }
 
 // RequestProcessingResponse bundles PDA validation with per-packet DFA results
 type RequestProcessingResponse struct {
-	PDA     PDAValidationResponse  `json:"pda"`
-	Packets []DFAPacketResponse   `json:"packets"`
-	IsMalicious bool              `json:"is_malicious"`
+	PDA         PDAValidationResponse `json:"pda"`
+	Packets     []DFAPacketResponse   `json:"packets"`
+	IsMalicious bool                  `json:"is_malicious"`
 }
-// SessionInitResponse represents the response when starting a session
-type SessionInitResponse struct {
-	SessionID string `json:"session_id"`
-}
+
 
 // GraphResponse represents the static graph structure
 type GraphResponse struct {

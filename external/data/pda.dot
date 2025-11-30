@@ -1,78 +1,79 @@
 digraph PDA {
   rankdir=LR;
-  node [shape=circle];
+  node [shape=circle, fontname="Helvetica"];
+  edge [fontname="Courier", fontsize=10];
 
-  /* start point */
+  /* ---------------- Setup ---------------- */
   __start [shape=point];
+  /* Push Z0: The "Ground Truth" that the machine is running */
   __start -> Start [label="ε, ε -> Z0"];
 
-  Start [label="Start"];
-  Accept [label="Accept", shape=doublecircle];
+  Start [label="Start", style=bold];
+  
+  /* Trap State: Any invalid move lands here */
+  Reject [label="Reject", shape=Msquare, style=filled, fillcolor="#ffcccc"];
+  
+  /* Accept: Reached only if input is done AND we can pop Z0 (Empty Stack) */
+  Accept [label="Accept", shape=doublecircle, style=filled, fillcolor="#ccffcc"];
 
-  /* ---------------- Protocol branching ---------------- */
-  Start -> TCP_Init  [label="proto=tcp, ε -> ε"];
-  Start -> UDP_Init  [label="proto=udp, ε -> ε"];
-  Start -> ICMP_Init [label="proto=icmp, ε -> ε"];
+  /* ---------------- Protocol Selection ---------------- */
+  Start -> TCP_Pending [label="proto=tcp, ε -> ε"];
+  Start -> UDP_Process [label="proto=udp, ε -> ε"];
+  Start -> ICMP_Process [label="proto=icmp, ε -> ε"];
 
-  /* ---------------- TCP ---------------- */
-  TCP_Init [label="TCP_Init"];
-  TCP_Handshake [label="TCP_Handshake"];
+  /* ---------------- TCP LOGIC ---------------- */
+  TCP_Pending [label="TCP_Wait_SYN"];
+  TCP_Established [label="TCP_Established", shape=doubleoctagon];
+  TCP_Closing [label="TCP_Closing"];
 
-  /* TCP: service selection - neutral stack */
-  TCP_Init -> TCP_Handshake [label="service=http, ε -> ε"];
-  TCP_Init -> TCP_Handshake [label="service=ssh, ε -> ε"];
-  TCP_Init -> TCP_Handshake [label="service=dns, ε -> ε"];
-  TCP_Init -> TCP_Handshake [label="service=-, ε -> ε"];
+  /* 1. START SESSION: Push 'CONN' on top of Z0 */
+  TCP_Pending -> TCP_Established [label="state=S0, ε -> CONN", color="blue", penwidth=2.0];
 
-  /* TCP: handshake stack ops */
-  TCP_Handshake -> TCP_Handshake [label="state=S0, ε -> T"];  /* push T */
-  TCP_Handshake -> TCP_Handshake [label="state=SF, T -> ε"];  /* pop T */
+  /* Allow service identification during pending state (e.g. if packet has both flags and service info) */
+  TCP_Pending -> TCP_Pending [label="service=http, ε -> ε"];
+  TCP_Pending -> TCP_Pending [label="service=ssh, ε -> ε"];
 
-    /* Allow new packet headers to start while in handshake (accept proto/service of next packet)
-      so the PDA can process sequences like: proto,service,S0  proto,service,S1 ... */
-    TCP_Handshake -> TCP_Init [label="proto=tcp, ε -> ε"];
-    TCP_Handshake -> UDP_Init [label="proto=udp, ε -> ε"];
-    TCP_Handshake -> ICMP_Init [label="proto=icmp, ε -> ε"];
+  /* 1a. Invalid starts go to Reject */
+  TCP_Pending -> Reject [label="state=S1, ε -> ε"];
+  TCP_Pending -> Reject [label="state=SF, ε -> ε"];
 
-    /* Allow service tokens to be seen between handshake frames without changing stack */
-    TCP_Handshake -> TCP_Handshake [label="service=http, ε -> ε"];
-    TCP_Handshake -> TCP_Handshake [label="service=ssh, ε -> ε"];
-    TCP_Handshake -> TCP_Handshake [label="service=dns, ε -> ε"];
-    TCP_Handshake -> TCP_Handshake [label="service=-, ε -> ε"];
+  /* 2. IN SESSION: Loop while CONN is on stack */
+  TCP_Established -> TCP_Established [label="state=S1, ε -> ε"];
+  TCP_Established -> TCP_Established [label="state=S2, ε -> ε"];
+  TCP_Established -> TCP_Established [label="service=http, ε -> ε"];
+  TCP_Established -> TCP_Established [label="service=ssh, ε -> ε"];
+  TCP_Established -> TCP_Established [label="proto=tcp, ε -> ε"];
 
-  /* TCP: neutral transitions */
-  TCP_Handshake -> TCP_Handshake [label="state=S1, ε -> ε"];
-  TCP_Handshake -> TCP_Handshake [label="state=S2, ε -> ε"];
-  TCP_Handshake -> TCP_Handshake [label="state=RSTO, ε -> ε"];
-  TCP_Handshake -> TCP_Handshake [label="state=RSTR, ε -> ε"];
+  /* 3. END SESSION: Pop 'CONN', exposing Z0 below it */
+  TCP_Established -> TCP_Closing [label="state=SF, CONN -> ε", color="red", penwidth=2.0];
+  TCP_Established -> TCP_Closing [label="state=RSTR, CONN -> ε", color="red"];
 
-  /* Allow unexpected proto/service tokens to be handled gracefully in TCP_Init as well */
-  TCP_Init -> TCP_Init [label="proto=tcp, ε -> ε"];
-  TCP_Init -> TCP_Init [label="service=http, ε -> ε"];
-  TCP_Init -> TCP_Init [label="service=ssh, ε -> ε"];
-  TCP_Init -> TCP_Init [label="service=dns, ε -> ε"];
+  /* 4. TERMINATE: Pop Z0. If Z0 is not there, we crash/reject. */
+  TCP_Closing -> Accept [label="END, Z0 -> ε"];
+  
+  /* If stream ends while established (CONN is still there), we reject */
+  TCP_Established -> Reject [label="END, CONN -> CONN"]; 
 
-  /* TCP: accept only when stack back to Z0 */
-  TCP_Handshake -> Accept [label="END, Z0 -> Z0"];
 
-  /* ---------------- UDP ---------------- */
-  UDP_Init [label="UDP_Init"];
+  /* ---------------- UDP LOGIC ---------------- */
+  UDP_Process [label="UDP_Process"];
 
-  UDP_Init -> UDP_Init [label="service=dns, ε -> ε"];
-  UDP_Init -> UDP_Init [label="service=dhcp, ε -> ε"];
-  UDP_Init -> UDP_Init [label="service=ntp, ε -> ε"];
-  UDP_Init -> UDP_Init [label="service=-, ε -> ε"];
-  UDP_Init -> UDP_Init [label="state=S0, ε -> ε"];
-  UDP_Init -> UDP_Init [label="state=SF, ε -> ε"];
+  /* UDP doesn't push CONN, so Z0 is always exposed */
+  UDP_Process -> UDP_Process [label="service=dns, ε -> ε"];
+  UDP_Process -> UDP_Process [label="service=ntp, ε -> ε"];
+  UDP_Process -> UDP_Process [label="proto=udp, ε -> ε"];
+  UDP_Process -> UDP_Process [label="state=OTH, ε -> ε"];
+  
+  /* Finalize: Pop Z0 */
+  UDP_Process -> Accept [label="END, Z0 -> ε"];
 
-  UDP_Init -> Accept [label="END, ε -> ε"];
-
-  /* ---------------- ICMP ---------------- */
-  ICMP_Init [label="ICMP_Init"];
-
-  ICMP_Init -> ICMP_Init [label="service=-, ε -> ε"];
-  ICMP_Init -> ICMP_Init [label="state=OTH, ε -> ε"];
-  ICMP_Init -> ICMP_Init [label="state=SF, ε -> ε"];
-
-  ICMP_Init -> Accept [label="END, ε -> ε"];
+  /* ---------------- ICMP LOGIC ---------------- */
+  ICMP_Process [label="ICMP_Process"];
+  
+  ICMP_Process -> ICMP_Process [label="type=echo, ε -> ε"];
+  ICMP_Process -> ICMP_Process [label="proto=icmp, ε -> ε"];
+  ICMP_Process -> ICMP_Process [label="state=OTH, ε -> ε"];
+  
+  /* Finalize: Pop Z0 */
+  ICMP_Process -> Accept [label="END, Z0 -> ε"];
 }

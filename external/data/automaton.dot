@@ -13,6 +13,7 @@ digraph DFA {
   s0 -> s5 [label="state=S0"];
   s0 -> s5 [label="state=RSTR"];
   s0 -> s5 [label="service=dns"];
+  s0 -> s5 [label="service=ssh"];
   s0 -> s5 [label="state=SH"];
   s0 -> s5 [label="state=SF"];
   s0 -> s5 [label="state=REJ"];
@@ -30,6 +31,7 @@ digraph DFA {
   s1 -> s5 [label="state=S0"];
   s1 -> s5 [label="state=RSTR"];
   s1 -> s5 [label="service=dns"];
+  s1 -> s5 [label="service=ssh"];
   s1 -> s5 [label="state=SH"];
   s1 -> s5 [label="state=SF"];
   s1 -> s5 [label="state=REJ"];
@@ -47,6 +49,7 @@ digraph DFA {
   s2 -> s5 [label="state=S0"];
   s2 -> s5 [label="state=RSTR"];
   s2 -> s5 [label="service=dns"];
+  s2 -> s5 [label="service=ssh"];
   s2 -> s5 [label="state=SH"];
   s2 -> s5 [label="state=SF"];
   s2 -> s5 [label="state=REJ"];
@@ -67,6 +70,7 @@ digraph DFA {
   s3 -> s2 [label="state=S1"];
   s3 -> s5 [label="service=http"];
   s3 -> s5 [label="service=dhcp"];
+  s3 -> s5 [label="service=ssh"];
   s3 -> s1 [label="state=RSTO"];
   s3 -> s5 [label="proto=icmp"];
   s3 -> s2 [label="state=RSTRH"];
@@ -94,10 +98,12 @@ digraph DFA {
   s4 -> s5 [label="proto=udp"];
   s4 -> s5 [label="service=dhcp"];
   s4 -> s5 [label="service=http"];
+  s4 -> s5 [label="service=ssh"];
   s5 -> s5 [label="state=RSTOS0"];
   s5 -> s5 [label="state=OTH"];
   s5 -> s5 [label="service=http"];
   s5 -> s5 [label="service=dhcp"];
+  s5 -> s5 [label="service=ssh"];
   s5 -> s5 [label="state=SH"];
   s5 -> s5 [label="state=S0"];
   s5 -> s5 [label="state=S2"];

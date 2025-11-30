@@ -29,26 +29,24 @@ Windows notes
 - The backend will prefer a Windows-built CLI named `api.exe` when present and will fall back to the non-.exe binary if the `.exe` is not found (this supports running under WSL or when only the Linux binary is available). Place the simulator binary under `../security-dfa-gen/bin/` (or `external/bin/` depending on your setup) so the backend can locate it.
 - If you want native Windows support it is easiest to build the C++ simulator on Windows (MSYS2 / Visual Studio toolchain) and ensure the output binary is named `api.exe` in the expected location. Alternatively use WSL and build the existing Makefile there.
 
+
 Important API endpoints
 
-- `POST /api/session` — start a new interactive session. Returns `{ session_id }`.
 - `GET /api/graph` — returns DFA `GraphData` (nodes/edges) used by the visualizer's DFA view.
 - `GET /api/pda/graph` — returns PDA `GraphData` for the PDA view.
-- `POST /api/request/process` — send a full request (packets array) for processing. Example payload:
-
-```json
-{
-  "session_id": "...",
-  "host_id": "192.168.1.100",
-  "packets": [ { "proto": "tcp", "service": "http", "conn_state": "S0", "data": "GET /" } ],
-  "threshold": 1
-}
-```
+  - `POST /api/request/process` — send a full request (packets array) for processing. Example payload:
+ 
+ ```json
+ {
+   "packets": [ { "proto": "tcp", "service": "http", "conn_state": "S0", "data": "GET /" } ],
+   "threshold": 1
+ }
+ ```
 
 The response contains a `pda` validation result, and an array of per-packet DFA responses (`packets`), each including `is_malicious` and step traces.
 
 - `POST /api/dfa/step` — run DFA for a single packet (used for step-by-step DFA playback).
-- `GET /api/derivation?session_id=...` — get grammar derivation steps for the current session.
+- `POST /api/derivation` — get grammar derivation steps for a provided packet (POST body: `{ "packet": {...} }`).
 
 Templates and frontend integration
 
