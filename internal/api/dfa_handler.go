@@ -28,8 +28,44 @@ func (h *DFAHandler) HandleStep(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Run C++ DFA Step starting from initial state 's4'
-	resp, err := h.runner.RunDFAStep("s4", req.Packet)
+	// Determine start state dynamically from the graph JSON instead of
+	// hardcoding a state like "s4". If we can't determine it, fall back
+	// to the first node id or return an error.
+	graph, gerr := h.runner.GetGraph()
+	if gerr != nil {
+		http.Error(w, gerr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	startState := ""
+	if graph != nil && len(graph.Nodes) > 0 {
+		// Nodes are unmarshaled into interface{}; expect map[string]interface{}
+		for _, raw := range graph.Nodes {
+			if nodeMap, ok := raw.(map[string]interface{}); ok {
+				if isStart, ok2 := nodeMap["is_start"].(bool); ok2 && isStart {
+					if id, ok3 := nodeMap["id"].(string); ok3 {
+						startState = id
+						break
+					}
+				}
+			}
+		}
+		// If no explicit start flag found, try the first node's id
+		if startState == "" {
+			if firstNode, ok := graph.Nodes[0].(map[string]interface{}); ok {
+				if id, ok := firstNode["id"].(string); ok {
+					startState = id
+				}
+			}
+		}
+	}
+
+	if startState == "" {
+		http.Error(w, "failed to determine start state for DFA", http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := h.runner.RunDFAStep(startState, req.Packet)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

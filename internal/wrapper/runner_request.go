@@ -1,9 +1,9 @@
 package wrapper
 
 import (
-    "fmt"
+	"fmt"
 
-    "security-backend/internal/models"
+	"security-backend/internal/models"
 )
 
 // RunRequest processes a high-level request composed of multiple packets.
@@ -12,58 +12,87 @@ import (
 // - For each packet, run the DFA step(s) starting from the start state (stateless per-packet)
 // Returns combined result including PDA response and per-packet DFA responses
 func (r *Runner) RunRequest(packets []models.Packet, threshold int) (*models.RequestProcessingResponse, error) {
-    // Build PDA history: expand each packet to the sequence [proto=..., service=..., state=...]
-    var history []string
-    for _, p := range packets {
-        if p.Proto != "" && p.Proto != "-" {
-            history = append(history, "proto="+p.Proto)
-        }
-        if p.Service != "" && p.Service != "-" {
-            history = append(history, "service="+p.Service)
-        }
-        if p.ConnState != "" && p.ConnState != "-" {
-            history = append(history, "state="+p.ConnState)
-        }
-    }
+	// Build PDA history: expand each packet to the sequence [proto=..., service=..., state=...]
+	var history []string
+	for _, p := range packets {
+		if p.Proto != "" && p.Proto != "-" {
+			history = append(history, "proto="+p.Proto)
+		}
+		if p.Service != "" && p.Service != "-" {
+			history = append(history, "service="+p.Service)
+		}
+		if p.ConnState != "" && p.ConnState != "-" {
+			history = append(history, "state="+p.ConnState)
+		}
+	}
 
-    pdaResp, err := r.RunPDAValidation(history)
-    if err != nil {
-        return nil, err
-    }
+	pdaResp, err := r.RunPDAValidation(history)
+	if err != nil {
+		return nil, err
+	}
 
-    // For per-packet DFA processing, we run each packet starting from the start state `s4`.
-    var packetResults []models.DFAPacketResponse
-    for _, p := range packets {
-        dres, err := r.RunDFAStep("s4", p)
-        if err != nil {
-            // On error, include a simple error-like DFAPacketResponse
-            packetResults = append(packetResults, models.DFAPacketResponse{
-                Steps:       []models.DFAStep{},
-                FinalState:  "error",
-                IsMalicious: false,
-                Label:       fmt.Sprintf("error: %v", err),
-            })
-            continue
-        }
-        packetResults = append(packetResults, *dres)
-    }
+	// Determine start state dynamically from the DFA graph so we don't hardcode
+	// a specific state like "s4". Fall back to first node id if necessary.
+	startState := ""
+	if graph, err := r.GetGraph(); err == nil && graph != nil && len(graph.Nodes) > 0 {
+		for _, raw := range graph.Nodes {
+			if nodeMap, ok := raw.(map[string]interface{}); ok {
+				if isStart, ok2 := nodeMap["is_start"].(bool); ok2 && isStart {
+					if id, ok3 := nodeMap["id"].(string); ok3 {
+						startState = id
+						break
+					}
+				}
+			}
+		}
+		if startState == "" {
+			if firstNode, ok := graph.Nodes[0].(map[string]interface{}); ok {
+				if id, ok := firstNode["id"].(string); ok {
+					startState = id
+				}
+			}
+		}
+	}
 
-    // Decide whether the whole request is malicious based on the provided threshold.
-    maliciousCount := 0
-    for _, pr := range packetResults {
-        if pr.IsMalicious {
-            maliciousCount++
-        }
-    }
+	if startState == "" {
+		// If we failed to determine start state, return an error instead of
+		// silently using a wrong hardcoded value.
+		return nil, fmt.Errorf("failed to determine DFA start state")
+	}
 
-    overallMalicious := false
-    if threshold > 0 && maliciousCount >= threshold {
-        overallMalicious = true
-    }
+	// For per-packet DFA processing, we run each packet starting from the discovered start state.
+	var packetResults []models.DFAPacketResponse
+	for _, p := range packets {
+		dres, err := r.RunDFAStep(startState, p)
+		if err != nil {
+			// On error, include a simple error-like DFAPacketResponse
+			packetResults = append(packetResults, models.DFAPacketResponse{
+				Steps:       []models.DFAStep{},
+				FinalState:  "error",
+				IsMalicious: false,
+				Label:       fmt.Sprintf("error: %v", err),
+			})
+			continue
+		}
+		packetResults = append(packetResults, *dres)
+	}
 
-    return &models.RequestProcessingResponse{
-        PDA:         *pdaResp,
-        Packets:     packetResults,
-        IsMalicious: overallMalicious,
-    }, nil
+	// Decide whether the whole request is malicious based on the provided threshold.
+	maliciousCount := 0
+	for _, pr := range packetResults {
+		if pr.IsMalicious {
+			maliciousCount++
+		}
+	}
+
+	overallMalicious := false
+	if threshold > 0 && maliciousCount >= threshold {
+		overallMalicious = true
+	}
+
+	return &models.RequestProcessingResponse{
+		PDA:         *pdaResp,
+		Packets:     packetResults,
+		IsMalicious: overallMalicious,
+	}, nil
 }
