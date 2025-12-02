@@ -86,6 +86,17 @@ func (h *DFAHandler) HandleGetGraph(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(graph)
 }
 
+func (h *DFAHandler) HandleGetGrammar(w http.ResponseWriter, r *http.Request) {
+	grammar, err := h.runner.GetGrammar()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(grammar)
+}
+
 // Derivation now accepts POST { "packet": <Packet> }
 func (h *DFAHandler) HandleGetDerivation(w http.ResponseWriter, r *http.Request) {
 	type DeriveRequest struct {

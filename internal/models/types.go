@@ -45,9 +45,13 @@ type RequestProcessingResponse struct {
 	IsMalicious bool                  `json:"is_malicious"`
 }
 
-
 // GraphResponse represents the static graph structure
 type GraphResponse struct {
 	Nodes []interface{} `json:"nodes"` // React Flow nodes
 	Edges []interface{} `json:"edges"` // React Flow edges
+}
+
+// GrammarResponse represents a list of grammar rules provided by the C++ binary
+type GrammarResponse struct {
+	Rules []string `json:"rules"`
 }
