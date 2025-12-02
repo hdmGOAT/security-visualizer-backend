@@ -14,6 +14,7 @@ const (
 	DotPath        = "external/data/automaton.dot"
 	PDADotPath     = "external/data/pda.dot"
 	PDAGrammarPath = "external/data/pda_grammar.txt"
+	GeneratorPath  = "external/bin/generator"
 )
 
 // Runner handles execution of the C++ binary
@@ -23,6 +24,7 @@ type Runner struct {
 	dotPath        string
 	pdaDotPath     string
 	pdaGrammarPath string
+	generatorPath  string
 }
 
 // NewRunner creates a new Runner
@@ -54,11 +56,37 @@ func NewRunner() *Runner {
 	dotPath, _ := filepath.Abs(DotPath)
 	pdaDotPath, _ := filepath.Abs(PDADotPath)
 	pdaGrammarPath, _ := filepath.Abs(PDAGrammarPath)
+	genPath, _ := filepath.Abs(GeneratorPath)
 	return &Runner{
 		binaryPath:     binPath,
 		grammarPath:    gramPath,
 		dotPath:        dotPath,
 		pdaDotPath:     pdaDotPath,
 		pdaGrammarPath: pdaGrammarPath,
+		generatorPath:  genPath,
 	}
+}
+
+// SetPaths updates the runner to use custom paths for data files
+func (r *Runner) SetPaths(dot, grammar, pdaDot, pdaGrammar string) {
+	if dot != "" {
+		r.dotPath, _ = filepath.Abs(dot)
+	}
+	if grammar != "" {
+		r.grammarPath, _ = filepath.Abs(grammar)
+	}
+	if pdaDot != "" {
+		r.pdaDotPath, _ = filepath.Abs(pdaDot)
+	}
+	if pdaGrammar != "" {
+		r.pdaGrammarPath, _ = filepath.Abs(pdaGrammar)
+	}
+}
+
+// ResetPaths resets the runner to use default paths
+func (r *Runner) ResetPaths() {
+	r.grammarPath, _ = filepath.Abs(GrammarPath)
+	r.dotPath, _ = filepath.Abs(DotPath)
+	r.pdaDotPath, _ = filepath.Abs(PDADotPath)
+	r.pdaGrammarPath, _ = filepath.Abs(PDAGrammarPath)
 }

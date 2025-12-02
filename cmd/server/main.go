@@ -33,6 +33,8 @@ func main() {
 	// Handlers (stateless)
 	dfaHandler := api.NewDFAHandler(runner)
 	pdaHandler := api.NewPDAHandler(runner)
+	configHandler := api.NewConfigHandler(runner)
+	datasetHandler := api.NewDatasetHandler(runner)
 
 	// Routes
 	r.Post("/api/dfa/step", dfaHandler.HandleStep)
@@ -45,6 +47,14 @@ func main() {
 	r.Post("/api/pda/derivation", pdaHandler.HandleGetDerivation)
 	r.Get("/api/pda/grammar", pdaHandler.HandleGetGrammar)
 	r.Post("/api/pda/validate", pdaHandler.HandleValidate)
+
+	// Config routes
+	r.Post("/api/config/upload", configHandler.HandleUploadConfig)
+	r.Post("/api/config/reset", configHandler.HandleResetConfig)
+
+	// Dataset routes
+	r.Get("/api/datasets", datasetHandler.HandleListDatasets)
+	r.Post("/api/datasets/load", datasetHandler.HandleLoadDataset)
 
 	log.Println("Starting server on :8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
